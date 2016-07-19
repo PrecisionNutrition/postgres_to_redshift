@@ -146,6 +146,22 @@ RSpec.describe PostgresToRedshift::Column do
       column = PostgresToRedshift::Column.new attributes: attributes
       expect(column.data_type_for_copy).to eq("CHARACTER VARYING(65535)")
     end
+    
+    it 'casts array to character varying' do
+      attributes = {
+        "table_catalog"            => "postgres_to_redshift",
+        "table_schema"             => "public",
+        "table_name"               => "films",
+        "column_name"              => "description",
+        "ordinal_position"         => "2",
+        "column_default"           => nil,
+        "is_nullable"              => "YES",
+        "data_type"                => "array",
+      }
+
+      column = PostgresToRedshift::Column.new attributes: attributes
+      expect(column.data_type_for_copy).to eq("CHARACTER VARYING(65535)")
+    end
 
     it "returns the data type if no cast necessary" do
       attributes = {
