@@ -28,6 +28,15 @@ class PostgresToRedshift
 
       update_tables.import_table(table)
     end
+    
+    post_update
+  end
+  
+  def self.post_update
+    puts "Running post update sql at ./post.sql"
+    post_sql = File.read("./post.sql")
+    
+    puts target_connection.exec(post_sql)
   end
 
   def self.source_uri
