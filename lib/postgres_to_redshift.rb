@@ -28,14 +28,14 @@ class PostgresToRedshift
 
       update_tables.import_table(table)
     end
-    
+
     post_update
   end
-  
+
   def self.post_update
     puts "Running post update sql at ./post.sql"
     post_sql = File.read("./post.sql")
-    
+
     puts target_connection.exec(post_sql)
   end
 
@@ -75,7 +75,7 @@ class PostgresToRedshift
   def tables
     source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type in ('BASE TABLE', 'VIEW')").map do |table_attributes|
       table = Table.new(attributes: table_attributes)
-      next if table.name =~ /^pg_/
+      next if (table.name =~ /^pg_/ || table.name == 'events' || table.name == 'versions')
       table.columns = column_definitions(table)
       table
     end.compact
