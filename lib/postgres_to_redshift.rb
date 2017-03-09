@@ -73,7 +73,7 @@ class PostgresToRedshift
   end
 
   def tables
-    source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type in ('BASE TABLE', 'VIEW')").map do |table_attributes|
+    source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'").map do |table_attributes|
       table = Table.new(attributes: table_attributes)
       next if (table.name =~ /^pg_/ || table.name == 'events' || table.name == 'versions')
       table.columns = column_definitions(table)
@@ -94,43 +94,31 @@ class PostgresToRedshift
   end
 
   def copy_table(table)
-    tmpfile = Tempfile.new("psql2rs")
-    zip = Zlib::GzipWriter.new(tmpfile)
-    chunksize = 5 * GIGABYTE # uncompressed
+    tmpfile = Tempfile.new("psql2rs")     
+	File.chmod(0666, tmpfile) 
     chunk = 1
-    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.gz").delete_all
+    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.gz").delete_all    	
+	
     begin
-      puts "Downloading #{table}"
-      copy_command = "COPY (SELECT #{table.columns_for_copy} FROM #{table.name}) TO STDOUT WITH DELIMITER '|'"
-
-      source_connection.copy_data(copy_command) do
-        while row = source_connection.get_copy_data
-          zip.write(row)
-          if (zip.pos > chunksize)
-            zip.finish
-            tmpfile.rewind
-            upload_table(table, tmpfile, chunk)
-            chunk += 1
-            zip.close unless zip.closed?
-            tmpfile.unlink
-            tmpfile = Tempfile.new("psql2rs")
-            zip = Zlib::GzipWriter.new(tmpfile)
-          end
-        end
-      end
-      zip.finish
-      tmpfile.rewind
-      upload_table(table, tmpfile, chunk)
-      source_connection.reset
-    ensure
-      zip.close unless zip.closed?
+      puts "Downloading #{table}"      
+	  
+	  copy_command = "COPY (SELECT #{table.columns_for_copy} FROM #{table.name}) TO '#{tmpfile.path}' WITH DELIMITER '|'"
+	  
+	  source_connection.exec copy_command
+	  
+	  `/bin/gzip #{tmpfile.path} && mv #{tmpfile.path}.gz #{tmpfile.path}`
+	  
+	  File.chmod(0666, tmpfile) 
+      
+      upload_table(table, tmpfile, chunk)	       
+    ensure            
       tmpfile.unlink
     end
   end
 
-  def upload_table(table, buffer, chunk)
-    puts "Uploading #{table.target_table_name}.#{chunk}"
-    bucket.objects["export/#{table.target_table_name}.psv.gz.#{chunk}"].write(buffer, acl: :authenticated_read)
+  def upload_table(table, file, chunk)		
+    puts "Uploading #{table.target_table_name}.#{chunk}"	
+    bucket.objects["export/#{table.target_table_name}.psv.gz.#{chunk}"].write(file: file, acl: :authenticated_read)
   end
 
   def import_table(table)
