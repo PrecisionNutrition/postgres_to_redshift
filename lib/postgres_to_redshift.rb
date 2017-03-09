@@ -73,9 +73,11 @@ class PostgresToRedshift
   end
 
   def tables
+    tables_to_skip = ['events', 'versions', 'stripe_webhooks']
+	
     source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'").map do |table_attributes|
       table = Table.new(attributes: table_attributes)
-      next if (table.name =~ /^pg_/ || table.name == 'events' || table.name == 'versions')
+      next if table.name =~ /^pg_/ || tables_to_skip.include?(table.name)
       table.columns = column_definitions(table)
       table
     end.compact
