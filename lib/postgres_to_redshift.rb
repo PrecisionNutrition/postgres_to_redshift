@@ -99,7 +99,7 @@ class PostgresToRedshift
     tmpfile = Tempfile.new("psql2rs")     
 	File.chmod(0666, tmpfile) 
     chunk = 1
-    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.bz2bz2").delete_all    	
+    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.bz2").delete_all    	
 	
     begin
       puts "Downloading #{table}"      
