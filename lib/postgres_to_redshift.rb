@@ -73,7 +73,7 @@ class PostgresToRedshift
   end
 
   def tables
-    tables_to_skip = ['events', 'versions', 'stripe_webhooks']
+    tables_to_skip = ['events', 'versions', 'stripe_webhooks', 'string_versions', 'work_items_backup']
 	
     source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'").map do |table_attributes|
       table = Table.new(attributes: table_attributes)
