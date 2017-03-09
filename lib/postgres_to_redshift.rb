@@ -101,7 +101,11 @@ class PostgresToRedshift
     bucket.objects.with_prefix("export/#{table.target_table_name}.psv.gz").delete_all
     begin
       puts "Downloading #{table}"
-      copy_command = "COPY (SELECT #{table.columns_for_copy} FROM #{table.name}) TO STDOUT WITH DELIMITER '|'"
+      temp_table = "tempy_#{table.name}"
+      #copy_command = "COPY (SELECT #{table.columns_for_copy} FROM #{table.name}) TO STDOUT WITH DELIMITER '|'"
+
+      source_connection.execute("CREATE TEMPORARY TABLE #{tempy} AS SELECT (#{table.colums_for_copy}) from #{table.name};";
+      copy_command = "COPY #{tempy} TO STDOUT WITH DELIMITER '|';"
 
       source_connection.copy_data(copy_command) do
         while row = source_connection.get_copy_data
@@ -123,6 +127,7 @@ class PostgresToRedshift
       upload_table(table, tmpfile, chunk)
       source_connection.reset
     ensure
+      source_connection.execute("DROP TEMPORARY TABLE IF EXISTS #{tempy}")
       zip.close unless zip.closed?
       tmpfile.unlink
     end
