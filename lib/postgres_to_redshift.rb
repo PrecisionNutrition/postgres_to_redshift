@@ -99,7 +99,7 @@ class PostgresToRedshift
     tmpfile = Tempfile.new("psql2rs")     
 	File.chmod(0666, tmpfile) 
     chunk = 1
-    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.gz").delete_all    	
+    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.bz2bz2").delete_all    	
 	
     begin
       puts "Downloading #{table}"      
@@ -108,7 +108,7 @@ class PostgresToRedshift
 	  
 	  source_connection.exec copy_command
 	  
-	  `/bin/gzip #{tmpfile.path} && mv #{tmpfile.path}.gz #{tmpfile.path}`
+	  `/bin/bzip2 #{tmpfile.path} && mv #{tmpfile.path}.bz2 #{tmpfile.path}`
 	  
 	  File.chmod(0666, tmpfile) 
       
@@ -120,7 +120,7 @@ class PostgresToRedshift
 
   def upload_table(table, file, chunk)		
     puts "Uploading #{table.target_table_name}.#{chunk}"	
-    bucket.objects["export/#{table.target_table_name}.psv.gz.#{chunk}"].write(file: file, acl: :authenticated_read)
+    bucket.objects["export/#{table.target_table_name}.psv.bz2.#{chunk}"].write(file: file, acl: :authenticated_read)
   end
 
   def import_table(table)
@@ -133,7 +133,7 @@ class PostgresToRedshift
 
     target_connection.exec("CREATE TABLE public.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})")
 
-    target_connection.exec("COPY public.#{target_connection.quote_ident(table.target_table_name)} FROM 's3://#{ENV['S3_DATABASE_EXPORT_BUCKET']}/export/#{table.target_table_name}.psv.gz' CREDENTIALS 'aws_access_key_id=#{ENV['S3_DATABASE_EXPORT_ID']};aws_secret_access_key=#{ENV['S3_DATABASE_EXPORT_KEY']}' GZIP TRUNCATECOLUMNS ESCAPE DELIMITER as '|';")
+    target_connection.exec("COPY public.#{target_connection.quote_ident(table.target_table_name)} FROM 's3://#{ENV['S3_DATABASE_EXPORT_BUCKET']}/export/#{table.target_table_name}.psv.bz2' CREDENTIALS 'aws_access_key_id=#{ENV['S3_DATABASE_EXPORT_ID']};aws_secret_access_key=#{ENV['S3_DATABASE_EXPORT_KEY']}' BZIP2 TRUNCATECOLUMNS ESCAPE DELIMITER as '|';")
 
     target_connection.exec("COMMIT;")
   end
