@@ -55,7 +55,8 @@ class PostgresToRedshift::Column
     "oid" => "CHARACTER VARYING(65535)",
     "ARRAY" => "CHARACTER VARYING(65535)",
     "uuid" => "CHARACTER VARYING(65535)",
-    "tsrange" => "CHARACTER VARYING(65535)"
+    "tsrange" => "CHARACTER VARYING(65535)",
+    "time without time zone" => "CHARACTER VARYING(65535)"
   }
 
   def initialize(attributes: )
