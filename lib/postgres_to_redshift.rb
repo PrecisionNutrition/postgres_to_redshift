@@ -18,8 +18,13 @@ class PostgresToRedshift
   MEGABYTE = KILOBYTE * 1024
   GIGABYTE = MEGABYTE * 1024
 
+  PRE_SQL_FILENAME = './pre.sql'
+  POST_SQL_FILENAME = './post.sql'
+
   def self.update_tables
     update_tables = PostgresToRedshift.new
+
+    pre_update
 
     update_tables.tables.each do |table|
       target_connection.exec("CREATE TABLE IF NOT EXISTS public.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})")
@@ -32,11 +37,28 @@ class PostgresToRedshift
     post_update
   end
 
-  def self.post_update
-    puts "Running post update sql at ./post.sql"
-    post_sql = File.read("./post.sql")
+  # This runs on the intermediate PG server
+  def self.pre_update
+    if File.exists?(PRE_SQL_FILENAME)
+      puts "Running #{PRE_SQL_FILENAME}  against Postgres..."
+      pre_sql = File.read(PRE_SQL_FILENAME)
 
-    puts target_connection.exec(post_sql)
+      puts source_connection.exec(pre_sql)
+    else
+      puts "No #{PRE_SQL_FILENAME} found - skipping pre update."
+    end
+  end
+
+  # This runs on Redshift
+  def self.post_update
+    if File.exists?(post_SQL_FILENAME)
+      puts "Running #{post_SQL_FILENAME}  against Postgres..."
+      post_sql = File.read(post_SQL_FILENAME)
+
+      puts target_connection.exec(post_sql)
+    else
+      puts "No #{post_SQL_FILENAME} found - skipping post update."
+    end
   end
 
   def self.source_uri
