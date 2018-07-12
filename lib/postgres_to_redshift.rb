@@ -96,9 +96,9 @@ class PostgresToRedshift
 
   def tables
     tables_to_skip = ['events', 'versions', 'stripe_webhooks', 'string_versions', 'work_items_backup']
-	
+
     source_connection.exec("SELECT * FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'").map do |table_attributes|
-      table = Table.new(attributes: table_attributes)	  
+      table = Table.new(attributes: table_attributes)
       next if table.name =~ /^pg_/ || tables_to_skip.include?(table.name)
       table.columns = column_definitions(table)
       table
@@ -117,34 +117,34 @@ class PostgresToRedshift
     @bucket ||= s3.buckets[ENV['S3_DATABASE_EXPORT_BUCKET']]
   end
 
-  def copy_table(table)	
+  def copy_table(table)
     tmpfile = Tempfile.new("psql2rs")
 	compressedTmpFile = Pathname.new("#{tmpfile.path}.bz2")
-	
-	File.chmod(0666, tmpfile) 
+
+	File.chmod(0666, tmpfile)
     chunk = 1
-    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.bz2").delete_all    	
-	
+    bucket.objects.with_prefix("export/#{table.target_table_name}.psv.bz2").delete_all
+
     begin
-      puts "Downloading #{table} into #{tmpfile.path}"      
-	  
+      puts "Downloading #{table} into #{tmpfile.path}"
+
 	  copy_command = "COPY (SELECT #{table.columns_for_copy} FROM #{table.name}) TO '#{tmpfile.path}' WITH DELIMITER '|'"
-	  
+
 	  source_connection.exec copy_command
-	  
-	  File.chmod(0666, tmpfile) 
-	  
+
+	  File.chmod(0666, tmpfile)
+
 	  system "/usr/bin/pbzip2 #{tmpfile.path}"
-      
+
       upload_table(table, compressedTmpFile, chunk)
-    ensure            
+    ensure
       tmpfile.unlink
 	  compressedTmpFile.unlink
     end
   end
 
-  def upload_table(table, file, chunk)		
-    puts "Uploading #{table.target_table_name}.#{chunk}"	
+  def upload_table(table, file, chunk)
+    puts "Uploading #{table.target_table_name}.#{chunk}"
     bucket.objects["export/#{table.target_table_name}.psv.bz2.#{chunk}"].write(file: file, acl: :authenticated_read)
   end
 
